@@ -99,9 +99,6 @@ The training script we used, by sequence, are `train_sdxl.sh`, `train_sdxl_resum
 
 You can edit the training script to use more/fewer GPUs and update the hyperparameters.
 
-![alt text](image.png)
-![alt text](image-1.png)
-
 ## Citation
 The authors of this repo (IGLIGEN-XL) are not affiliated with the authors of GLIGEN and IGLIGEN. Since IGLIGEN-XL is based on GLIGEN and IGLIGEN, if you use the IGLIGEN-XL code or adapters, please kindly consider citing the original GLIGEN and IGLIGEN paper:
 ```
