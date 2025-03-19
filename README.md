@@ -99,6 +99,11 @@ The training script we used, by sequence, are `train_sdxl.sh`, `train_sdxl_resum
 
 You can edit the training script to use more/fewer GPUs and update the hyperparameters.
 
+## InteractDiffusion SDXL Training
+We training on 8 A100 GPUs with IGLIGEN-XL. For inference usage of InteractDiffusion-XL, please check [jiuntian/interactdiffusion-xl-1024](https://huggingface.co/jiuntian/interactdiffusion-xl-1024).
+
+The training script we used, by sequence, are `train_interactdiffusion.sh`, and `train_interactdiffusion_1024.sh`. The code should works but I haven't have time to verify, please check with yourself and provide feedback if any issues.
+
 ## Citation
 The authors of this repo (IGLIGEN-XL) are not affiliated with the authors of GLIGEN and IGLIGEN. Since IGLIGEN-XL is based on GLIGEN and IGLIGEN, if you use the IGLIGEN-XL code or adapters, please kindly consider citing the original GLIGEN and IGLIGEN paper:
 ```
@@ -118,7 +123,7 @@ The authors of this repo (IGLIGEN-XL) are not affiliated with the authors of GLI
 
 The project is part of the effort in creating [InteractDiffusion XL](https://jiuntian.github.io/interactdiffusion/). 
 
-Please kindly consider citing InteractDiffusion if you use IGLIGEN-XL code/trained weights.
+Please kindly consider citing **InteractDiffusion** if you use IGLIGEN-XL code/trained weights.
 ```
 @inproceedings{hoe2023interactdiffusion,
   title={InteractDiffusion: Interaction Control in Text-to-Image Diffusion Models}, 
