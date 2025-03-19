@@ -51,5 +51,5 @@ accelerate launch $MULTI_GPU --num_processes=$NUM_GPUS --mixed_precision="fp16" 
   --prob_use_caption 0.5 \
   --prob_use_boxes 0.9 \
   --no_caption_only \
-  --resume_from_checkpoint latest \
-  --wandb_resume_id 0dmst6fm
+  --resume_from_checkpoint latest
+  
