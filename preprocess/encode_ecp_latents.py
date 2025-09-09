@@ -65,6 +65,17 @@ def main():
     parser.add_argument("--num_workers", type=int, default=64)
     args = parser.parse_args()
 
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+
+    use_accelerator = device.startswith("cuda")
+    
+    if use_accelerator:
+        from accelerate import Accelerator
+        accelerator = Accelerator()
+        device = accelerator.device  # accelerator handles multi-GPU automatically
+    else:
+        accelerator = None
+
     # Load subset
     subset = None
     if args.filtered_file and os.path.exists(args.filtered_file):
@@ -77,15 +88,16 @@ def main():
     save_dir = os.path.join(args.latent_root_folder, save_folder)
     os.makedirs(save_dir, exist_ok=True)
 
+    # Load VAE
+    vae = AutoencoderKL.from_pretrained("stabilityai/stable-diffusion-xl-base-1.0", subfolder="vae")
+    vae.to(device)
+    vae.eval()
+
     dataloader = torch.utils.data.DataLoader(
         dataset, batch_size=args.batch_size, num_workers=args.num_workers, pin_memory=True
     )
-
-    # Load VAE
-    vae = AutoencoderKL.from_pretrained("stabilityai/stable-diffusion-xl-base-1.0", subfolder="vae")
-    device = "cuda" if torch.cuda.is_available() else "cpu"
-    vae.to(device)
-    vae.eval()
+    if use_accelerator:
+        vae, dataloader = accelerator.prepare(vae, dataloader)
 
     # Encode & Save Latents
     for ind, (images, info) in enumerate(tqdm.tqdm(dataloader, total=len(dataset.samples)//args.batch_size + 1)):
@@ -95,10 +107,17 @@ def main():
             images = images.permute(0, 3, 1, 2)
 
         images = images.to(device, non_blocking=True)
-
-        with torch.inference_mode(), torch.cuda.amp.autocast():
-            latents = vae_encode(images, vae)
-
+        if use_accelerator:
+            with torch.inference_mode(), accelerator.autocast():
+                latents = vae_encode(images, vae)
+        else:
+            # Only use autocast if GPU is available
+            if device.startswith("cuda"):
+                with torch.inference_mode(), torch.cuda.amp.autocast():
+                    latents = vae_encode(images, vae)
+            else:
+                with torch.inference_mode():
+                    latents = vae_encode(images, vae)
 
         batch_indices = info["idx"] if isinstance(info["idx"], list) else [info["idx"]]
         batch_paths = info["path"] if isinstance(info["path"], list) else [info["path"]]
