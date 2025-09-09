@@ -78,7 +78,7 @@ def main():
     os.makedirs(save_dir, exist_ok=True)
 
     dataloader = torch.utils.data.DataLoader(
-        dataset, batch_size=args.batch_size, num_workers=args.num_ workers, pin_memory=True
+        dataset, batch_size=args.batch_size, num_workers=args.num_workers, pin_memory=True
     )
 
     # Load VAE
