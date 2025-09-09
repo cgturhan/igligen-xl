@@ -97,7 +97,7 @@ def main():
         dataset, batch_size=args.batch_size, num_workers=args.num_workers, pin_memory=True
     )
     if use_accelerator:
-        vae, dataloader = accelerator.prepare(vae, dataloader)
+        vae = accelerator.prepare(vae)
 
     # Encode & Save Latents
     for ind, (images, info) in enumerate(tqdm.tqdm(dataloader, total=len(dataset.samples)//args.batch_size + 1)):
