@@ -48,11 +48,11 @@ class ImagePathDataset(Dataset):
 
     def __getitem__(self, idx):
         path = self.image_paths[idx]
-        return image_path
+        image = Image.open(path).convert("RGB")
+        return path, image
 
 @torch.no_grad()
-def batch2caption(image_paths, llava_model, processor, convo, device):
-    images = [Image.open(p).convert("RGB") for p in image_paths]
+def batch2caption(images, llava_model, processor, convo, device):
     convo_string = processor.apply_chat_template(convo, tokenize=False, add_generation_prompt=True)
     
     inputs = processor(
@@ -83,7 +83,7 @@ def process_city(city_name, data_path, city_filtered_files, batch_size=8, num_wo
     for batch in tqdm(dataloader, desc=f"Processing {city_name}"):
         paths, images = zip(*batch)
         # Convert PIL images to GPU-ready tensors
-        batch_captions = batch2caption(paths, llava_model, processor, convo, device)
+        batch_captions = batch2caption(images, llava_model, processor, convo, device)
         city_captions.update({os.path.basename(p): c.lower() for p, c in zip(paths, batch_captions)})
 
     return city_captions
