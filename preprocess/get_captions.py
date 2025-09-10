@@ -9,7 +9,7 @@ from accelerate import Accelerator
 from transformers import BitsAndBytesConfig, AutoProcessor, LlavaForConditionalGeneration
 
 class ImagePathDataset(Dataset):
-    def __init__(self, root_folder, cityname=None):
+    def __init__(self, root_folder, subset, cityname=None):
         self.root_folder = root_folder
         self.image_fnames = []
 
@@ -133,7 +133,7 @@ def main():
             print(f"{save_path} exists, skipping")
             continue
 
-        dataset = ImagePathDataset(args.root_folder, subfolder)
+        dataset = ImagePathDataset(args.root_folder, filtered_files, subfolder)
         dataloader = DataLoader(dataset, batch_size=args.batch_size, num_workers=args.num_workers, pin_memory=True)
 
         all_captions = {}
