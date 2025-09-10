@@ -137,7 +137,7 @@ def main():
         dataloader = DataLoader(dataset, batch_size=args.batch_size, num_workers=args.num_workers, pin_memory=True)
 
         all_captions = {}
-        for image_paths in tqdm(dataloader):
+        for image_paths in tqdm(dataloader, total=len(dataset.samples)//args.batch_size + 1)):
             # Generate captions
             captions = image2batch_caption(image_paths, llava_model, processor, convo, device)
             all_captions.update(dict(zip(subfolder, captions)))
