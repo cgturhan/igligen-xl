@@ -13,22 +13,23 @@ class ImagePathDataset(Dataset):
         self.root_folder = root_folder
         self.image_fnames = []
 
-        for class_idx, class_name in enumerate(sorted(os.listdir(root_folder))):
+        # If a specific city is given → only process that
+        target_cities = [cityname] if cityname else sorted(os.listdir(root_folder))
+
+        for class_name in target_cities:
             class_path = os.path.join(root_folder, class_name)
             if not os.path.isdir(class_path):
                 continue
 
-            if cityname is not None and class_name in subset:
+            if subset and class_name in subset:
                 cls_img_names = subset[class_name]
+                cls_img_paths = [os.path.join(class_path, fname) for fname in cls_img_names]
             else:
-                cls_img_names = os.listdir(class_path)
+                # Use glob for efficiency
+                cls_img_paths = glob.glob(os.path.join(class_path, "*.png"))
 
-            for fname in cls_img_names:
-                if fname.lower().endswith((".png", ".jpg", ".jpeg")):
-                    self.image_fnames.append(os.path.join(class_path, fname))
-                else:
-                    print(f"Skipping non-image file: {fname}")                
-
+            self.image_fnames.extend(cls_img_paths)
+            
     def __len__(self):
         return len(self.image_fnames)
 
@@ -137,6 +138,7 @@ def main():
         dataloader = DataLoader(dataset, batch_size=args.batch_size, num_workers=args.num_workers, pin_memory=True)
 
         all_captions = {}
+
         for image_paths in tqdm(dataloader, total=len(dataset)//args.batch_size + 1):
             # Generate captions
             captions = image2batch_caption(image_paths, llava_model, processor, convo, device)
