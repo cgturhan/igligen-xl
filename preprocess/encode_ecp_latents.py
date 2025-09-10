@@ -63,6 +63,7 @@ def main():
     parser.add_argument("--batch_size", type=int, default=4)
     parser.add_argument("--resolution", type=int, default=1024)
     parser.add_argument("--num_workers", type=int, default=64)
+    parser.add_argument("is_qwen_vae", type = bool, default = False) 
     args = parser.parse_args()
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -89,7 +90,10 @@ def main():
     os.makedirs(save_dir, exist_ok=True)
 
     # Load VAE
-    vae = AutoencoderKL.from_pretrained("stabilityai/stable-diffusion-xl-base-1.0", subfolder="vae")
+    if not is_qwen_vae:
+        vae = AutoencoderKL.from_pretrained("stabilityai/stable-diffusion-xl-base-1.0", subfolder="vae")
+    else:
+        vae = AutoencoderKL.from_pretrained("Qwen/Qwen-Image/vae")
     vae.to(device)
     vae.eval()
 
