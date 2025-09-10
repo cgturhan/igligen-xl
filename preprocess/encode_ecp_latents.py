@@ -94,7 +94,17 @@ def main():
         vae = AutoencoderKL.from_pretrained("stabilityai/stable-diffusion-xl-base-1.0", subfolder="vae")
     else:
         from diffusers import DiffusionPipeline
-        vae = DiffusionPipeline.from_pretrained("Qwen/Qwen-Image").vae
+        # Load the pipeline
+        if torch.cuda.is_available():
+            torch_dtype = torch.bfloat16
+            device = "cuda"
+        else:
+            torch_dtype = torch.float32
+            device = "cpu"
+        
+        pipe = DiffusionPipeline.from_pretrained(model_name, torch_dtype=torch_dtype)
+        pipe = pipe.to(device)
+        vae = pipe.vae 
         #vae = AutoencoderKL.from_pretrained("Qwen/Qwen-Image", subfolder= "vae")
     vae.to(device)
     vae.eval()
