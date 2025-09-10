@@ -18,7 +18,7 @@ class ImagePathDataset(Dataset):
             if not os.path.isdir(class_path):
                 continue
 
-            if subset is not None and class_name in subset:
+            if cityname is not None and class_name in subset:
                 cls_img_names = subset[class_name]
             else:
                 cls_img_names = os.listdir(class_path)
@@ -36,10 +36,11 @@ class ImagePathDataset(Dataset):
         image_path = self.image_fnames[idx]
         return image_path
 
-def image2batch_caption(images, fnames, llava_model, processor, convo, device, dtype=torch.bfloat16):
+def image2batch_caption(image_paths,llava_model, processor, convo, device, dtype=torch.bfloat16):
     """
     Generate captions for a batch of images.
     """
+    images = [Image.open(path).convert("RGB") for path in image_paths]
     convo_string = processor.apply_chat_template(convo, tokenize=False, add_generation_prompt=True)
     assert isinstance(convo_string, str)
 
@@ -117,25 +118,29 @@ def main():
     device = "cuda" if torch.cuda.is_available() else "cpu"
     accelerator = Accelerator()
     llava_model = accelerator.prepare(llava_model)
+    if args.subfolder !=None:
+        save_path = os.path.join(args.caption_root_folder, f"{subfolder}_captions.json")
+    else:
+        save_path = os.path.join(args.caption_root_folder, "all_captions.json")
 
     for subfolder, image_fnames in filtered_files.items():
         if args.sub_folder and subfolder != args.sub_folder:
             continue
 
         print(f"Processing {subfolder} with {len(image_fnames)} images")
-        save_path = os.path.join(args.caption_root_folder, f"{subfolder}_captions.json")
+
         if os.path.exists(save_path):
             print(f"{save_path} exists, skipping")
             continue
 
-        dataset = ImageDataset(os.path.join(args.root_folder, subfolder), image_fnames)
+        dataset = ImagePathDataset(args.root_folder, subfolder)
         dataloader = DataLoader(dataset, batch_size=args.batch_size, num_workers=args.num_workers, pin_memory=True)
 
         all_captions = {}
-        for images, fnames in tqdm(dataloader):
+        for image_paths in tqdm(dataloader):
             # Generate captions
-            captions = image2batch_caption(images, fnames, llava_model, processor, convo, device)
-            all_captions.update(dict(zip(fnames, captions)))
+            captions = image2batch_caption(image_paths, llava_model, processor, convo, device)
+            all_captions.update(dict(zip(subfolder, captions)))
 
         # Save to JSON
         with open(save_path, "w") as f:
