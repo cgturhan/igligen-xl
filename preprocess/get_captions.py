@@ -118,7 +118,7 @@ def main():
     device = "cuda" if torch.cuda.is_available() else "cpu"
     accelerator = Accelerator()
     llava_model = accelerator.prepare(llava_model)
-    if args.subfolder !=None:
+    if args.sub_folder != None:
         save_path = os.path.join(args.caption_root_folder, f"{subfolder}_captions.json")
     else:
         save_path = os.path.join(args.caption_root_folder, "all_captions.json")
