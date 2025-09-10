@@ -8,19 +8,33 @@ import torch
 from accelerate import Accelerator
 from transformers import BitsAndBytesConfig, AutoProcessor, LlavaForConditionalGeneration
 
-class ImageDataset(Dataset):
-    def __init__(self, root_folder, image_fnames):
+class ImagePathDataset(Dataset):
+    def __init__(self, root_folder, cityname=None):
         self.root_folder = root_folder
-        self.image_fnames = image_fnames
+        self.image_fnames = []
+
+        for class_idx, class_name in enumerate(sorted(os.listdir(root_folder))):
+            class_path = os.path.join(root_folder, class_name)
+            if not os.path.isdir(class_path):
+                continue
+
+            if subset is not None and class_name in subset:
+                cls_img_names = subset[class_name]
+            else:
+                cls_img_names = os.listdir(class_path)
+
+            for fname in cls_img_names:
+                if fname.lower().endswith((".png", ".jpg", ".jpeg")):
+                    self.image_fnames.append(os.path.join(class_path, fname))
+                else:
+                    print(f"Skipping non-image file: {fname}")                
 
     def __len__(self):
         return len(self.image_fnames)
 
     def __getitem__(self, idx):
-        fname = self.image_fnames[idx]
-        path = os.path.join(self.root_folder, fname)
-        image = Image.open(path).convert("RGB")
-        return image, fname
+        image_path = self.image_fnames[idx]
+        return image_path
 
 def image2batch_caption(images, fnames, llava_model, processor, convo, device, dtype=torch.bfloat16):
     """
