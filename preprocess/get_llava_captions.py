@@ -44,7 +44,7 @@ def image2caption(image_path, llava_model=llava_model, processor=processor, conv
     with torch.no_grad():
         image = Image.open(image_path).convert("RGB")
         convo_string = processor.apply_chat_template(convo, tokenize=False, add_generation_prompt=True)
-        inputs = processor(text=[convo_string], images=[image], return_tensors="pt").to("cuda")
+        inputs = processor(text=[convo_string], images=[image], return_tensors="pt").to(accelerator.device)
         inputs["pixel_values"] = inputs["pixel_values"].to(torch.bfloat16)
 
         generate_ids = llava_model.generate(
@@ -65,7 +65,7 @@ def batch2caption(image_paths, llava_model=llava_model, processor=processor, con
         images = [Image.open(path).convert("RGB") for path in image_paths]
         convo_string = processor.apply_chat_template(convo, tokenize=False, add_generation_prompt=True)
 
-        inputs = processor(text=[convo_string], images=images, return_tensors="pt").to("cuda")
+        inputs = processor(text=[convo_string]*len(images), images=images, return_tensors="pt").to(accelerator.device)
         inputs["pixel_values"] = inputs["pixel_values"].to(torch.bfloat16)
 
         generate_ids = llava_model.generate(
