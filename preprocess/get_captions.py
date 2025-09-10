@@ -20,7 +20,6 @@ qnt_config = BitsAndBytesConfig(
     llm_int8_skip_modules=["vision_tower", "multi_modal_projector"],
 )
 
-# Load processor + model
 processor = AutoProcessor.from_pretrained(MODEL_NAME, use_fast=True)
 llava_model = LlavaForConditionalGeneration.from_pretrained(
     MODEL_NAME,
@@ -41,35 +40,15 @@ convo = [
 ]
 
 class ImagePathDataset(Dataset):
-    def __init__(self, root_folder, subset=None, cityname=None):
-        self.root_folder = root_folder
-        self.image_fnames = []
-
-        # Determine which cities to process
-        target_cities = [cityname] if cityname else sorted(os.listdir(root_folder))
-
-        for class_name in target_cities:
-            class_path = os.path.join(root_folder, class_name)
-            if not os.path.isdir(class_path):
-                continue
-
-            # Filter by subset if provided
-            if subset and class_name in subset:
-                cls_img_paths = [os.path.join(class_path, fname) for fname in subset[class_name]]
-            else:
-                # Use glob to get images efficiently
-                cls_img_paths = []
-                for ext in ("*.png", "*.jpg", "*.jpeg"):
-                    cls_img_paths.extend(glob.glob(os.path.join(class_path, ext)))
-
-            self.image_fnames.extend(cls_img_paths)
+    def __init__(self, image_paths):
+        self.image_paths = image_paths
 
     def __len__(self):
-        return len(self.image_fnames)
+        return len(self.image_paths)
 
     def __getitem__(self, idx):
-        return self.image_fnames[idx]  # Only return path, images will be loaded later
-
+        path = self.image_paths[idx]
+        return image_path
 
 @torch.no_grad()
 def batch2caption(image_paths, llava_model, processor, convo, device):
