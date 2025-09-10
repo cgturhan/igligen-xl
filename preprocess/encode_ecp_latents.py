@@ -93,7 +93,7 @@ def main():
     if not args.is_qwen_vae:
         vae = AutoencoderKL.from_pretrained("stabilityai/stable-diffusion-xl-base-1.0", subfolder="vae")
     else:
-        vae = AutoencoderKL.from_pretrained("Qwen/Qwen-Image/vae")
+        vae = AutoencoderKL.from_pretrained("Qwen/Qwen-Image", subfolder= "vae")
     vae.to(device)
     vae.eval()
 
