@@ -54,12 +54,12 @@ class ImagePathDataset(Dataset):
 def batch2caption(image_paths, llava_model, processor, convo, device):
     images = [Image.open(path).convert("RGB") for path in image_paths]
     convo_string = processor.apply_chat_template(convo, tokenize=False, add_generation_prompt=True)
-    
+
     inputs = processor(
-        text=[convo_string] * len(images),
-        images=images,
-        return_tensors="pt",
-    ).to(device)
+    text=[convo_string]*len(images),
+    images=images,
+    return_tensors="pt"
+    ).to(accelerator.device)
     
     inputs["pixel_values"] = inputs["pixel_values"].to(torch.bfloat16)
 
