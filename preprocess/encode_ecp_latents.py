@@ -90,7 +90,7 @@ def main():
     os.makedirs(save_dir, exist_ok=True)
 
     # Load VAE
-    if not is_qwen_vae:
+    if not args.is_qwen_vae:
         vae = AutoencoderKL.from_pretrained("stabilityai/stable-diffusion-xl-base-1.0", subfolder="vae")
     else:
         vae = AutoencoderKL.from_pretrained("Qwen/Qwen-Image/vae")
