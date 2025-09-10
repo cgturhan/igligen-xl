@@ -5,6 +5,7 @@ from tqdm import tqdm
 import torch
 from PIL import Image
 from transformers import AutoProcessor, BitsAndBytesConfig
+from accelerate import Accelerator
 from transformers.models.llava.modeling_llava import LlavaForConditionalGeneration
 
 # PromptPROMPT = "Write a long descriptive caption for this image in a formal tone."
@@ -27,6 +28,10 @@ llava_model = LlavaForConditionalGeneration.from_pretrained(
     quantization_config=qnt_config,
     torch_dtype="auto",
 )
+device = "cuda" if torch.cuda.is_available() else "cpu"
+accelerator = Accelerator()
+llava_model = accelerator.prepare(llava_model)
+
 llava_model.eval()
 
 
