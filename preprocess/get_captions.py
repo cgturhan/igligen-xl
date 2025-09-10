@@ -2,18 +2,50 @@ import os
 import json
 import argparse
 from tqdm import tqdm
-from PIL import Image
-from torch.utils.data import Dataset, DataLoader
 import torch
+from PIL import Image
+from transformers import AutoProcessor, BitsAndBytesConfig
 from accelerate import Accelerator
-from transformers import BitsAndBytesConfig, AutoProcessor, LlavaForConditionalGeneration
+from torch.utils.data import Dataset, DataLoader
+from transformers.models.llava.modeling_llava import LlavaForConditionalGeneration
+
+MODEL_NAME = "fancyfeast/llama-joycaption-beta-one-hf-llava"
+PROMPT = "Write a long descriptive caption for this image in a formal tone."
+
+qnt_config = BitsAndBytesConfig(
+    load_in_4bit=True,
+    bnb_4bit_quant_type="nf4",
+    bnb_4bit_compute_dtype=torch.float16,
+    bnb_4bit_use_double_quant=True,
+    llm_int8_skip_modules=["vision_tower", "multi_modal_projector"],
+)
+
+# Load processor + model
+processor = AutoProcessor.from_pretrained(MODEL_NAME, use_fast=True)
+llava_model = LlavaForConditionalGeneration.from_pretrained(
+    MODEL_NAME,
+    device_map="auto",
+    quantization_config=qnt_config,
+    torch_dtype="auto",
+)
+
+# Accelerator for multi-GPU / device placement
+accelerator = Accelerator()
+llava_model = accelerator.prepare(llava_model)
+llava_model.eval()
+device = accelerator.device
+
+convo = [
+    {"role": "system", "content": "You are a helpful image captioner."},
+    {"role": "user", "content": PROMPT},
+]
 
 class ImagePathDataset(Dataset):
-    def __init__(self, root_folder, subset, cityname=None):
+    def __init__(self, root_folder, subset=None, cityname=None):
         self.root_folder = root_folder
         self.image_fnames = []
 
-        # If a specific city is given → only process that
+        # Determine which cities to process
         target_cities = [cityname] if cityname else sorted(os.listdir(root_folder))
 
         for class_name in target_cities:
@@ -21,134 +53,99 @@ class ImagePathDataset(Dataset):
             if not os.path.isdir(class_path):
                 continue
 
+            # Filter by subset if provided
             if subset and class_name in subset:
-                cls_img_names = subset[class_name]
-                cls_img_paths = [os.path.join(class_path, fname) for fname in cls_img_names]
+                cls_img_paths = [os.path.join(class_path, fname) for fname in subset[class_name]]
             else:
-                # Use glob for efficiency
-                cls_img_paths = glob.glob(os.path.join(class_path, "*.png"))
+                # Use glob to get images efficiently
+                cls_img_paths = []
+                for ext in ("*.png", "*.jpg", "*.jpeg"):
+                    cls_img_paths.extend(glob.glob(os.path.join(class_path, ext)))
 
             self.image_fnames.extend(cls_img_paths)
-            
+
     def __len__(self):
         return len(self.image_fnames)
 
     def __getitem__(self, idx):
-        image_path = self.image_fnames[idx]
-        return image_path
+        return self.image_fnames[idx]  # Only return path, images will be loaded later
 
-def image2batch_caption(image_paths,llava_model, processor, convo, device, dtype=torch.bfloat16):
-    """
-    Generate captions for a batch of images.
-    """
-    images = [Image.open(path).convert("RGB") for path in image_paths]
+
+@torch.no_grad()
+def batch2caption(image_paths, llava_model, processor, convo, device):
+    images = [Image.open(p).convert("RGB") for p in image_paths]
     convo_string = processor.apply_chat_template(convo, tokenize=False, add_generation_prompt=True)
-    assert isinstance(convo_string, str)
-
+    
     inputs = processor(
         text=[convo_string] * len(images),
         images=images,
-        return_tensors="pt"
+        return_tensors="pt",
     ).to(device)
-    
-    inputs['pixel_values'] = inputs['pixel_values'].to(dtype)
+    inputs["pixel_values"] = inputs["pixel_values"].to(torch.bfloat16)
 
-    with torch.inference_mode(), torch.autocast(device_type=device, dtype=dtype):
-        outputs = llava_model.generate(
-            **inputs,
-            max_new_tokens=256,
-            do_sample=True,
-            temperature=0.6,
-            top_p=0.9,
-            use_cache=True
-        )
-    
-    # Trim prompt tokens and decode
-    gen_ids = outputs[:, inputs['input_ids'].shape[1]:]
-    captions = processor.tokenizer.batch_decode(gen_ids, skip_special_tokens=True)
-    return [caption.strip() for caption in captions]
+    generate_ids = llava_model.generate(
+        **inputs,
+        max_new_tokens=256,
+        do_sample=True,
+        temperature=0.6,
+        top_p=0.9,
+    )[0]
+
+    generate_ids = generate_ids[inputs["input_ids"].shape[1]:]
+    captions = processor.tokenizer.decode(generate_ids, skip_special_tokens=True)
+    return [cap.strip() for cap in captions.split("\n") if cap.strip()]
+
+def process_city(city_name, data_path, city_filtered_files, batch_size=8, num_workers=4):
+    city_captions = {}
+    image_paths = [os.path.join(data_path, city_name, fname) for fname in city_filtered_files]
+    dataset = ImagePathDataset(image_paths)
+    dataloader = DataLoader(dataset, batch_size=batch_size, num_workers=num_workers, pin_memory=True)
+
+    for batch in tqdm(dataloader, desc=f"Processing {city_name}"):
+        paths, images = zip(*batch)
+        # Convert PIL images to GPU-ready tensors
+        batch_captions = batch2caption(paths, llava_model, processor, convo, device)
+        city_captions.update({os.path.basename(p): c.lower() for p, c in zip(paths, batch_captions)})
+
+    return city_captions
+
+def save_captions_asjson(out_folder, city_name, captions):
+    os.makedirs(out_folder, exist_ok=True)
+    path = os.path.join(out_folder, f"{city_name if city_name else 'all'}_captions.json")
+    with open(path, "w") as f:
+        json.dump(captions, f, indent=2)
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--root_folder", type=str, required=True, help="Folder containing images")
-    parser.add_argument("--caption_root_folder", type=str, required=True, help="Folder to save captions")
-    parser.add_argument("--filtered_file", type=str, default=None, help="JSON file with filtered images")
+    parser.add_argument("--root_folder", type=str, required=True)
+    parser.add_argument("--caption_root_folder", type=str, required=True)
+    parser.add_argument("--filtered_file", type=str, required=True)
     parser.add_argument("--batch_size", type=int, default=8)
-    parser.add_argument("--num_workers", type=int, default=4)
-    parser.add_argument("--sub_folder", type=str, default=None, help="Optional subfolder")
+    parser.add_argument("--num_workers", type=int, default=8)
+    parser.add_argument("--sub_folder", type=str, default=None)
     args = parser.parse_args()
 
-    os.makedirs(args.caption_root_folder, exist_ok=True)
+    with open(args.filtered_file, "r") as f:
+        filtered_files = json.load(f)
 
-  
-    if args.filtered_file and os.path.exists(args.filtered_file):
-        with open(args.filtered_file, "r") as f:
-            filtered_files = json.load(f)
+    data_path = args.root_folder
+    batch_size = args.batch_size
+    num_workers = args.num_workers
+    city_name = args.sub_folder
+
+    if city_name:
+        city_filtered_files = filtered_files.get(city_name, [])
+        captions = process_city(city_name, data_path, city_filtered_files, batch_size, num_workers)
+        save_captions_asjson(args.caption_root_folder, city_name, captions)
     else:
-        # fallback: use all images
-        filtered_files = {}
-        for fname in os.listdir(args.root_folder):
-            if fname.lower().endswith((".png", ".jpg", ".jpeg")):
-                filtered_files[fname] = [fname]
-
-
-    PROMPT = "Write a long descriptive caption for this image in a formal tone."
-    MODEL_NAME = "fancyfeast/llama-joycaption-beta-one-hf-llava"
-    convo = [
-        {"role": "system", "content": "You are a helpful image captioner."},
-        {"role": "user", "content": PROMPT},
-    ]
-
-    qnt_config = BitsAndBytesConfig(
-        load_in_4bit=True,
-        bnb_4bit_quant_type="nf4",
-        bnb_4bit_compute_dtype=torch.float16,
-        bnb_4bit_use_double_quant=True,
-        llm_int8_skip_modules=["vision_tower", "multi_modal_projector"]
-    )
-
-    processor = AutoProcessor.from_pretrained(MODEL_NAME)
-    llava_model = LlavaForConditionalGeneration.from_pretrained(
-        MODEL_NAME,
-        device_map="auto",
-        quantization_config=qnt_config,
-        torch_dtype="auto"
-    )
-    llava_model.eval()
-
-    device = "cuda" if torch.cuda.is_available() else "cpu"
-    accelerator = Accelerator()
-    llava_model = accelerator.prepare(llava_model)
-    if args.sub_folder != None:
-        save_path = os.path.join(args.caption_root_folder, f"{args.sub_folder}_captions.json")
-    else:
-        save_path = os.path.join(args.caption_root_folder, "all_captions.json")
-
-    for subfolder, image_fnames in filtered_files.items():
-        if args.sub_folder and subfolder != args.sub_folder:
-            continue
-
-        print(f"Processing {subfolder} with {len(image_fnames)} images")
-
-        if os.path.exists(save_path):
-            print(f"{save_path} exists, skipping")
-            continue
-
-        dataset = ImagePathDataset(args.root_folder, filtered_files, subfolder)
-        dataloader = DataLoader(dataset, batch_size=args.batch_size, num_workers=args.num_workers, pin_memory=True)
-
         all_captions = {}
-
-        for image_paths in tqdm(dataloader, total=len(dataset)//args.batch_size + 1):
-            # Generate captions
-            captions = image2batch_caption(image_paths, llava_model, processor, convo, device)
-            all_captions.update(dict(zip(subfolder, captions)))
-
-        # Save to JSON
-        with open(save_path, "w") as f:
-            json.dump(all_captions, f)
-        print(f"Saved captions to {save_path}")
-
+        for city_name, city_filtered_files in filtered_files.items():
+            city_caps = process_city(city_name, data_path, city_filtered_files, batch_size, num_workers)
+            all_captions.update(city_caps)
+        save_captions_asjson(args.caption_root_folder, None, all_captions)
 
 if __name__ == "__main__":
     main()
+
+
+
