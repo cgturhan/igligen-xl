@@ -20,10 +20,10 @@ qnt_config = BitsAndBytesConfig(
     llm_int8_skip_modules=["vision_tower", "multi_modal_projector"],
 )
 
-processor = AutoProcessor.from_pretrained(MODEL_NAME, use_fast=True)
+processor = AutoProcessor.from_pretrained(MODEL_NAME)
 llava_model = LlavaForConditionalGeneration.from_pretrained(
     MODEL_NAME,
-    device_map="auto",
+    device_map="auto",   # auto GPU placement
     quantization_config=qnt_config,
     torch_dtype="auto",
 )
