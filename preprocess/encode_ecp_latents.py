@@ -6,7 +6,7 @@ import tqdm
 import numpy as np
 from PIL import Image
 from torchvision import transforms
-from diffusers import AutoencoderKL
+from diffusers import AutoencoderKL, AutoencoderKLQwenImage
 from typing import Tuple
 import argparse
 from torch.cuda.amp import autocast
@@ -93,18 +93,11 @@ def main():
     if not args.is_qwen_vae:
         vae = AutoencoderKL.from_pretrained("stabilityai/stable-diffusion-xl-base-1.0", subfolder="vae")
     else:
-        from diffusers import DiffusionPipeline
-        # Load the pipeline
-        if torch.cuda.is_available():
-            torch_dtype = torch.bfloat16
-            device = "cuda"
-        else:
-            torch_dtype = torch.float32
-            device = "cpu"
-        
-        pipe = DiffusionPipeline.from_pretrained("Qwen/Qwen-Image", torch_dtype=torch_dtype)
-        pipe = pipe.to(device)
-        vae = pipe.vae 
+        vae = AutoencoderKLQwenImage.from_pretrained(
+            "Qwen/Qwen-Image",
+            subfolder="vae",
+            torch_dtype=torch.bfloat16
+        )
         #vae = AutoencoderKL.from_pretrained("Qwen/Qwen-Image", subfolder= "vae")
     vae.to(device)
     vae.eval()
