@@ -102,7 +102,7 @@ def main():
             torch_dtype = torch.float32
             device = "cpu"
         
-        pipe = DiffusionPipeline.from_pretrained(model_name, torch_dtype=torch_dtype)
+        pipe = DiffusionPipeline.from_pretrained("Qwen/Qwen-Image", torch_dtype=torch_dtype)
         pipe = pipe.to(device)
         vae = pipe.vae 
         #vae = AutoencoderKL.from_pretrained("Qwen/Qwen-Image", subfolder= "vae")
