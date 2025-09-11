@@ -46,15 +46,17 @@ def batch2caption(image_paths, llava_model, processor, convo, device):
 
     generate_ids = llava_model.generate(
         **inputs,
-        max_new_tokens=128,
+        max_new_tokens=256,
         do_sample=True,
         temperature=0.6,
         top_p=0.9,
-    )[0]
-
-    generate_ids = generate_ids[inputs["input_ids"].shape[1]:]
-    captions = processor.tokenizer.decode(generate_ids, skip_special_tokens=True)
-    return [cap.strip() for cap in captions.split("\n") if cap.strip()]
+    )
+    for i, gen_ids in enumerate(generate_ids_batch):
+        caption = processor.tokenizer.decode(
+            gen_ids[inputs['input_ids'].shape[1]:],  # trim prompt
+            skip_special_tokens=True
+        ).strip()
+    return caption
 
 def process_city(city_name, data_path, city_filtered_files, batch_size=8, num_workers=4):
     city_captions = {}
