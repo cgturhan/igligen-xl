@@ -139,8 +139,8 @@ def main():
         if os.path.exists(save_path):
             print(f"{save_path} exists, skipping")
             continue
-
-        dataset = ImagePathDataset(args.root_folder, filtered_files, subfolder)
+        
+        dataset = ImagePathDataset([os.path.join(args.root_folder, subfolder, fname) for fname in image_fnames])
         dataloader = DataLoader(dataset, batch_size=args.batch_size, num_workers=args.num_workers, pin_memory=True)
 
         all_captions = {}
