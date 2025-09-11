@@ -69,11 +69,17 @@ def batch2caption(image_paths, llava_model, processor, convo, device):
         do_sample=True,
         temperature=0.6,
         top_p=0.9,
-    )[0]
+    )
+    for i, gen_ids in enumerate(generate_ids_batch):
+    caption = processor.tokenizer.decode(
+        gen_ids[inputs['input_ids'].shape[1]:],  # trim prompt
+        skip_special_tokens=True
+    ).strip()
 
-    generate_ids = generate_ids[inputs["input_ids"].shape[1]:]
-    captions = processor.tokenizer.decode(generate_ids, skip_special_tokens=True)
-    return [cap.strip() for cap in captions.split("\n") if cap.strip()]
+    #generate_ids = generate_ids[inputs["input_ids"].shape[1]:]
+    #captions = processor.tokenizer.decode(generate_ids, skip_special_tokens=True)
+    #return [cap.strip() for cap in captions.split("\n") if cap.strip()]
+    return caption
 
 def process_city(city_name, data_path, city_filtered_files, batch_size=8, num_workers=4):
     city_captions = {}
@@ -117,7 +123,7 @@ def main():
         captions = process_city(city_name, data_path, city_filtered_files, batch_size, num_workers)
         save_captions_asjson(args.caption_root_folder, city_name, captions)
     else:
-        all_captions = {}
+        all_captions = []
         for city_name, city_filtered_files in filtered_files.items():
             city_caps = process_city(city_name, data_path, city_filtered_files, batch_size, num_workers)
             all_captions.update(city_caps)
