@@ -64,7 +64,9 @@ def process_city(city_name, data_path, city_filtered_files, batch_size=8, num_wo
 
     for batch_paths in tqdm(dataloader, desc=f"Processing {city_name}"):
         batch_captions = batch2caption(batch_paths, llava_model, processor, convo, device)
-        city_captions.update({os.path.basename(p): c.lower() for p, c in zip(batch_paths, batch_captions)})
+        for p, c in zip(batch_paths, batch_captions):
+            key = os.path.basename(p)
+            city_captions[key] = c.lower()  # overwrite if duplicate
 
     return city_captions
 
