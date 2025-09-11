@@ -40,7 +40,7 @@ def batch2caption(image_paths, llava_model, processor, convo, device):
     text=[convo_string]*len(images),
     images=images,
     return_tensors="pt"
-    ).to(accelerator.device)
+    ).to(device)
     
     inputs["pixel_values"] = inputs["pixel_values"].to(torch.bfloat16)
 
