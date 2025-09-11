@@ -83,6 +83,7 @@ def main():
     parser.add_argument("--num_workers", type=int, default=4)
     parser.add_argument("--sub_folder", type=str, default=None, help="Optional subfolder")
     parser.add_argument("--model_dir", type = str, default = None)
+    parser.add_argument("--is_qnt", type =bool , default = True)
     args = parser.parse_args()
 
     os.makedirs(args.caption_root_folder, exist_ok=True)
@@ -114,12 +115,19 @@ def main():
     )
     
     processor = AutoProcessor.from_pretrained(MODEL_NAME)
-    llava_model = LlavaForConditionalGeneration.from_pretrained(
-        MODEL_NAME,
-        device_map="auto",
-        quantization_config=qnt_config,
-        torch_dtype="auto"
-    )
+    if args.is_qnt:
+        llava_model = LlavaForConditionalGeneration.from_pretrained(
+            MODEL_NAME,
+            device_map="auto",
+            quantization_config=qnt_config,
+            torch_dtype="auto"
+        )
+    else:
+        llava_model = LlavaForConditionalGeneration.from_pretrained(
+            MODEL_NAME,
+            device_map="auto",
+            torch_dtype="auto"
+        )
     llava_model.eval()
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
