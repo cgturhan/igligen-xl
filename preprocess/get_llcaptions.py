@@ -147,7 +147,7 @@ def main():
 
         for image_paths in tqdm(dataloader, total=len(dataset)//args.batch_size + 1):
             # Generate captions
-            captions = image2batch_caption(image_paths, llava_model, processor, convo, device)
+            captions = batch2caption(image_paths, llava_model, processor, convo, device)
             all_captions.update(dict(zip(subfolder, captions)))
 
         # Save to JSON
