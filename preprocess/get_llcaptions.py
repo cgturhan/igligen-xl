@@ -111,17 +111,16 @@ def main():
         {"role": "system", "content": "You are a helpful image captioner."},
         {"role": "user", "content": PROMPT},
     ]
-
-    qnt_config = BitsAndBytesConfig(
-        load_in_4bit=True,
-        bnb_4bit_quant_type="nf4",
-        bnb_4bit_compute_dtype=torch.float16,
-        bnb_4bit_use_double_quant=True,
-        llm_int8_skip_modules=["vision_tower", "multi_modal_projector"]
-    )
-    
+  
     processor = AutoProcessor.from_pretrained(MODEL_NAME)
     if args.is_qnt:
+        qnt_config = BitsAndBytesConfig(
+            load_in_4bit=True,
+            bnb_4bit_quant_type="nf4",
+            bnb_4bit_compute_dtype=torch.float16,
+            bnb_4bit_use_double_quant=True,
+            llm_int8_skip_modules=["vision_tower", "multi_modal_projector"]
+        )
         llava_model = LlavaForConditionalGeneration.from_pretrained(
             MODEL_NAME,
             device_map="auto",
