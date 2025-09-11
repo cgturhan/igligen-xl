@@ -70,7 +70,7 @@ def batch2caption(image_paths, llava_model, processor, convo, device):
         temperature=0.6,
         top_p=0.9,
     )
-    for i, gen_ids in enumerate(generate_ids_batch):
+    for i, gen_ids in enumerate(generate_ids):
         caption = processor.tokenizer.decode(
             gen_ids[inputs['input_ids'].shape[1]:],  # trim prompt
             skip_special_tokens=True
