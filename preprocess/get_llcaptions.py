@@ -128,6 +128,7 @@ def main():
             torch_dtype="auto"
         )
     else:
+        print("Not quantized model")
         llava_model = LlavaForConditionalGeneration.from_pretrained(
             MODEL_NAME,
             device_map="auto",
@@ -138,6 +139,7 @@ def main():
     device = "cuda" if torch.cuda.is_available() else "cpu"
     accelerator = Accelerator()
     llava_model = accelerator.prepare(llava_model)
+    
     if args.sub_folder != None:
         save_path = os.path.join(args.caption_root_folder, f"{args.sub_folder}_captions.json")
     else:
