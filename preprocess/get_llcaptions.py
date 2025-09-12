@@ -89,7 +89,7 @@ def main():
     parser.add_argument("--num_workers", type=int, default=4)
     parser.add_argument("--sub_folder", type=str, default=None, help="Optional subfolder")
     parser.add_argument("--model_dir", type = str, default = None)
-    parser.add_argument("--is_qnt", type =bool , default = True)
+    parser.add_argument("--is_qnt",action="store_true",help="Whether or not use quantization")
     args = parser.parse_args()
 
     os.makedirs(args.caption_root_folder, exist_ok=True)
