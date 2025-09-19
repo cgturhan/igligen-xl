@@ -37,7 +37,7 @@ from PIL import ImageDraw
 from accelerate import Accelerator
 from accelerate.logging import get_logger
 from accelerate.utils import DistributedType, ProjectConfiguration, set_seed
-from datasets import concatenate_datasets, load_dataset
+#from datasets import concatenate_datasets, load_dataset
 from huggingface_hub import create_repo, upload_folder
 from packaging import version
 from torchvision import transforms
@@ -55,12 +55,12 @@ from diffusers.utils.import_utils import is_torch_npu_available, is_xformers_ava
 from diffusers.utils.torch_utils import is_compiled_module
 
 from utils.parser import load_args
-from dataset.sam_dataset import SAMDatasetSDXL
+from dataset.ecp_dataset import ECPDatasetSDXL
 from pipeline_gligen_sdxl import StableDiffusionXLGLIGENPipeline
 
 
 # Will error if the minimal version of diffusers is not installed. Remove at your own risks.
-check_min_version("0.30.0")
+#check_min_version("0.30.0")
 
 logger = get_logger(__name__)
 if is_torch_npu_available():
@@ -158,7 +158,7 @@ def parse_args(input_args=None):
     parser.add_argument(
         "--validation_steps",
         type=int,
-        default=10,
+        default=500,
         help="Run validation every X steps.",
     )
     parser.add_argument(
@@ -170,7 +170,7 @@ def parse_args(input_args=None):
     parser.add_argument(
         "--output_dir",
         type=str,
-        default="sdxl-model-finetuned",
+        default="igligen-citysdxl",
         help="The output directory where the model predictions and checkpoints will be written.",
     )
     parser.add_argument(
@@ -183,7 +183,7 @@ def parse_args(input_args=None):
     parser.add_argument(
         "--resolution",
         type=int,
-        default=1024,
+        default=512,
         help=(
             "The resolution for input images, all the images in the train/validation dataset will be resized to this"
             " resolution"
@@ -432,11 +432,11 @@ def parse_args(input_args=None):
     else:
         args = parser.parse_args()
         
-    config_path = args.config
-    print(f"Loading config from {config_path}")
+    #config_path = args.config
+    #print(f"Loading config from {config_path}")
 
-    config = load_args(config_path, cli_opts=args.opts)
-    print(str(config))
+    #config = load_args(config_path, cli_opts=args.opts)
+    #print(str(config))
 
     env_local_rank = int(os.environ.get("LOCAL_RANK", -1))
     if env_local_rank != -1 and env_local_rank != args.local_rank:
@@ -446,7 +446,7 @@ def parse_args(input_args=None):
     if args.proportion_empty_prompts < 0 or args.proportion_empty_prompts > 1:
         raise ValueError("`--proportion_empty_prompts` must be in the range [0, 1].")
 
-    return args, config
+    return args#, config
 
 
 # Adapted from pipelines.StableDiffusionXLPipeline.encode_prompt
@@ -566,7 +566,7 @@ def generate_timestep_weights(args, num_timesteps):
     return weights
 
 
-def main(args, config):
+def main(args):
     if args.report_to == "wandb" and args.hub_token is not None:
         raise ValueError(
             "You cannot use both --report_to=wandb and --hub_token due to a security risk of exposing your token."
@@ -856,7 +856,7 @@ def main(args, config):
     # SAMDataset repeats infinitely
     ddp_rank = accelerator.process_index
     num_ddp_processes = accelerator.num_processes
-    train_dataset = SAMDatasetSDXL(data_path=args.data_path, train_shards=config.train_shards,
+    train_dataset = ECPDatasetSDXL(data_path=args.data_path, train_shards=args.config,
                                    prob_use_caption=args.prob_use_caption,
                                    prob_use_boxes=args.prob_use_boxes,
                                    box_confidence_th=0.25,
@@ -1330,5 +1330,5 @@ def main(args, config):
 
 
 if __name__ == "__main__":
-    args, config = parse_args()
-    main(args, config)
+    args = parse_args()
+    main(args)
