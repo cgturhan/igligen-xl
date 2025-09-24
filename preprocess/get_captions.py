@@ -61,6 +61,8 @@ def batch2caption(image_paths, model, processor, convo, device):
     
     inputs["pixel_values"] = inputs["pixel_values"].to(torch.bfloat16)
 
+    model = model.module if hasattr(model, "module") else model
+
     generate_ids = model.generate(
         **inputs,
         max_new_tokens=256,
