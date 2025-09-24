@@ -26,10 +26,10 @@ llava_model = LlavaForConditionalGeneration.from_pretrained(
     quantization_config=qnt_config,
     torch_dtype="auto",
 )
-llava_model = llava_model.module if hasattr(llava_model, "module") else llava_model
+model = llava_model.module if hasattr(llava_model, "module") else llava_model
 
-llava_model = accelerator.prepare(llava_model)
-llava_model.eval()
+model = accelerator.prepare(model)
+model.eval()
 device = accelerator.device
 
 convo = [
@@ -49,7 +49,7 @@ class ImagePathDataset(Dataset):
         return path
 
 @torch.no_grad()
-def batch2caption(image_paths, llava_model, processor, convo, device):
+def batch2caption(image_paths, model, processor, convo, device):
     images = [Image.open(path).convert("RGB") for path in image_paths]
     convo_string = processor.apply_chat_template(convo, tokenize=False, add_generation_prompt=True)
 
@@ -61,7 +61,7 @@ def batch2caption(image_paths, llava_model, processor, convo, device):
     
     inputs["pixel_values"] = inputs["pixel_values"].to(torch.bfloat16)
 
-    generate_ids = llava_model.generate(
+    generate_ids = model.generate(
         **inputs,
         max_new_tokens=256,
         do_sample=True,
@@ -87,7 +87,7 @@ def process_city(city_name, data_path, city_filtered_files, batch_size=8, num_wo
     dataloader = DataLoader(dataset, batch_size=batch_size, num_workers=num_workers, pin_memory=True)
 
     for batch_paths in tqdm(dataloader, desc=f"Processing {city_name}"):
-        batch_captions = batch2caption(batch_paths, llava_model, processor, convo, device)
+        batch_captions = batch2caption(batch_paths, model, processor, convo, device)
         for p, c in zip(batch_paths, batch_captions):
             key = os.path.basename(p)
             city_captions[key] = c.lower()  # overwrite if duplicate
