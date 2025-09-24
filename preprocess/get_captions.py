@@ -65,7 +65,7 @@ def batch2caption(image_paths, model, processor, convo, device):
 
     generate_ids = model.generate(
         **inputs,
-        max_new_tokens=256,
+        max_new_tokens=128,
         do_sample=True,
         temperature=0.6,
         top_p=0.9,
