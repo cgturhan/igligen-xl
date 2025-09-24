@@ -19,17 +19,13 @@ qnt_config = BitsAndBytesConfig(
     bnb_4bit_use_double_quant=True,
     llm_int8_skip_modules=["vision_tower", "multi_modal_projector"],
 )
-
+accelerator = Accelerator()
 processor = AutoProcessor.from_pretrained(MODEL_NAME)
 llava_model = LlavaForConditionalGeneration.from_pretrained(
-    MODEL_NAME,
-    device_map="auto",   # auto GPU placement
     quantization_config=qnt_config,
     torch_dtype="auto",
 )
 
-# Accelerator for multi-GPU / device placement
-accelerator = Accelerator()
 llava_model = accelerator.prepare(llava_model)
 llava_model.eval()
 device = accelerator.device
