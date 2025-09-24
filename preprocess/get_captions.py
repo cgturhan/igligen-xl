@@ -22,6 +22,7 @@ qnt_config = BitsAndBytesConfig(
 accelerator = Accelerator()
 processor = AutoProcessor.from_pretrained(MODEL_NAME)
 llava_model = LlavaForConditionalGeneration.from_pretrained(
+    pretrained_model_name_or_path = MODEL_NAME,
     quantization_config=qnt_config,
     torch_dtype="auto",
 )
