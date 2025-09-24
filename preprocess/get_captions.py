@@ -26,6 +26,7 @@ llava_model = LlavaForConditionalGeneration.from_pretrained(
     quantization_config=qnt_config,
     torch_dtype="auto",
 )
+llava_model = llava_model.module if hasattr(llava_model, "module") else llava_model
 
 llava_model = accelerator.prepare(llava_model)
 llava_model.eval()
