@@ -110,8 +110,8 @@ def parse_args(input_args=None):
     parser.add_argument(
         "--pretrained_model_name_or_path",
         type=str,
-        default=None,
-        required=True,
+        default="/Volumes/SamsungSSD_CG/stable-diffusion-xl-base-1.0",
+        #required=True,
         help="Path to pretrained model or model identifier from huggingface.co/models.",
     )
     parser.add_argument(
@@ -195,7 +195,7 @@ def parse_args(input_args=None):
     parser.add_argument(
         "--max_train_steps",
         type=int,
-        default=None,
+        default=500000,
         help="Total number of training steps to perform.  If provided, overrides num_train_epochs.",
     )
     parser.add_argument(
@@ -408,7 +408,7 @@ def parse_args(input_args=None):
         help="Data path.",
     )
     parser.add_argument('--config', metavar='C', type=str, nargs='?',
-                        help='path to config', default='./dataset/sam_boxtext2img.yaml')
+                        help='path to config', default='./dataset/ecp_filtered_images.json')
     parser.add_argument(
         "--opts",
         help="Modify config options using the command-line 'KEY VALUE' pairs",
@@ -422,6 +422,7 @@ def parse_args(input_args=None):
     )
     parser.add_argument("--prob_use_caption", type=float, default=0.5, help="The prob of keeping caption.")
     parser.add_argument("--prob_use_boxes", type=float, default=0.9, help="The prob of keeping boxes.")
+    parser.add_argument("--is_subset", action="store_true", help="whether to use the subset of the dataset.")
     
     # wandb
     parser.add_argument("--wandb_resume_id", type=str, default="", help="The wandb ID to be resumed. This also enable wandb resuming.")
@@ -862,6 +863,7 @@ def main(args):
                                    box_confidence_th=0.25,
                                    batch_size=args.train_batch_size,
                                    transform=transform,
+                                   is_subset=args.is_subset,
                                    shard_shuffle_seed=None,
                                    ddp_rank=ddp_rank,
                                    num_ddp_processes=num_ddp_processes, no_caption_only=args.no_caption_only)
