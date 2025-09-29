@@ -421,6 +421,7 @@ def parse_args(input_args=None):
         action="store_true",
         help="whether to drop the caption when the boxes are dropped",
     )
+    parser.add_argument("--transform", action="store_true", help="whether to use the transform in the dataset.")
     parser.add_argument("--prob_use_caption", type=float, default=0.5, help="The prob of keeping caption.")
     parser.add_argument("--prob_use_boxes", type=float, default=0.9, help="The prob of keeping boxes.")
     parser.add_argument("--is_subset", action="store_true", help="whether to use the subset of the dataset.")
@@ -869,12 +870,13 @@ def main(args):
         for _, images in shard_files.items():
             train_shards += [image.split(".")[0] for image in images] # get name without extension
 
+    transform_fn = transform if args.transform else None   
     train_dataset = ECPDatasetSDXL(data_path=args.data_path, train_shards=train_shards,
                                    prob_use_caption=args.prob_use_caption,
                                    prob_use_boxes=args.prob_use_boxes,
                                    box_confidence_th=0.25,
                                    batch_size=args.train_batch_size,
-                                   transform=transform,
+                                   transform=transform_fn,
                                    is_subset=args.is_subset,
                                    shard_shuffle_seed=None,
                                    ddp_rank=ddp_rank,
@@ -908,8 +910,12 @@ def main(args):
         
         collated_examples['latents'] = collated_examples['latents'].to(memory_format=torch.contiguous_format)
 
-        for key in ['id', 'box_phrases', 'caption', 'original_sizes', 'crop_top_lefts']:
-            collated_examples[key] = [example[key] for example in examples]
+        if args.transform:
+            for key in ['id', 'box_phrases', 'caption', 'original_sizes', 'crop_top_lefts']:
+                collated_examples[key] = [example[key] for example in examples]
+        else:
+            for key in ['id', 'box_phrases', 'caption']:
+                collated_examples[key] = [example[key] for example in examples]
 
         return collated_examples
 
@@ -1075,18 +1081,33 @@ def main(args):
                     target_size = [args.resolution, args.resolution]
                     add_time_ids = list(original_size + crops_coords_top_left + target_size)
                     add_time_ids = torch.tensor([add_time_ids], device=accelerator.device, dtype=weight_dtype)
-                    return add_time_ids
-
-                add_time_ids = torch.cat(
-                    [compute_time_ids(s, c) for s, c in zip(batch["original_sizes"], batch["crop_top_lefts"])]
-                )
-                
+                    return add_time_ids                
                 # get prompt embeds
                 prompt_embeds_out = encode_prompt(batch['caption'],
                                                   text_encoders=text_encoders,
                                                   tokenizers=tokenizers,
                                                   proportion_empty_prompts=0.,
                                                   is_train=True)
+                
+
+                if args.transform:
+                    add_time_ids = torch.cat(
+                        [compute_time_ids(s, c) for s, c in zip(batch["original_sizes"], batch["crop_top_lefts"])]
+                    )
+
+                # time ids
+
+                else:
+                    batch_size = len(batch["latents"])  # or any key representing number of samples
+                    # Since images are pre-cropped, original size = target resolution
+                    original_sizes = torch.full((batch_size, 2), args.resolution, dtype=weight_dtype, device=accelerator.device)
+                    # crop_top_left is zero for pre-cropped images
+                    zeros = torch.zeros((batch_size, 2), dtype=weight_dtype, device=accelerator.device)
+                    # target size repeated
+                    target = torch.full((batch_size, 2), args.resolution, dtype=weight_dtype, device=accelerator.device)
+                    # concatenate to get add_time_ids [batch_size, 6]
+                    add_time_ids = torch.cat([original_sizes, zeros, target], dim=1)
+
 
                 # Predict the noise residual
                 unet_added_conditions = {"time_ids": add_time_ids}
