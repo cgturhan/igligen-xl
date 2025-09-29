@@ -22,6 +22,7 @@ import logging
 import math
 import os
 import random
+import json
 import shutil
 from contextlib import nullcontext
 from pathlib import Path
@@ -857,7 +858,18 @@ def main(args):
     # SAMDataset repeats infinitely
     ddp_rank = accelerator.process_index
     num_ddp_processes = accelerator.num_processes
-    train_dataset = ECPDatasetSDXL(data_path=args.data_path, train_shards=args.config,
+    if args.config is None:
+        train_shards = None
+        raise ValueError("Need to specify `--config which contains the training data shards.")
+    else:
+        with open(args.config, "r") as f:
+            shard_files = json.load(f)
+        # Turn data dict into shard-like splits
+        train_shards = []
+        for _, images in shard_files.items():
+            train_shards += [image.split(".")[0] for image in images] # get name without extension
+
+    train_dataset = ECPDatasetSDXL(data_path=args.data_path, train_shards=train_shards,
                                    prob_use_caption=args.prob_use_caption,
                                    prob_use_boxes=args.prob_use_boxes,
                                    box_confidence_th=0.25,
