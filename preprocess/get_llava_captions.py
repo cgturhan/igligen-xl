@@ -13,21 +13,21 @@ import json
 MODEL_NAME = "fancyfeast/llama-joycaption-beta-one-hf-llava"
 PROMPT = "Write a long descriptive caption for this image in a formal tone."
 
-qnt_config = BitsAndBytesConfig(
-    load_in_4bit=True,
-    bnb_4bit_quant_type="nf4",
-    bnb_4bit_compute_dtype=torch.float16,
-    bnb_4bit_use_double_quant=True,
-    llm_int8_skip_modules=["vision_tower", "multi_modal_projector"],
-)
+#qnt_config = BitsAndBytesConfig(
+#    load_in_4bit=True,
+#    bnb_4bit_quant_type="nf4",
+#    bnb_4bit_compute_dtype=torch.float16,
+#    bnb_4bit_use_double_quant=True,
+#    llm_int8_skip_modules=["vision_tower", "multi_modal_projector"],
+#)
 
 # Load processor + model
 processor = AutoProcessor.from_pretrained(MODEL_NAME)
 llava_model = LlavaForConditionalGeneration.from_pretrained(
     MODEL_NAME,
     device_map="auto",   # auto GPU placement
-    quantization_config=qnt_config,
-    torch_dtype="auto",
+    #quantization_config=qnt_config,
+    torch_dtype="bfloat16"
 )
 device = "cuda" if torch.cuda.is_available() else "cpu"
 accelerator = Accelerator()
