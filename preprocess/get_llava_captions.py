@@ -165,7 +165,6 @@ def process_city(city_name, data_path, city_filtered_files, batch_size=4):
         city_captions.update({fname: cap.lower() for fname, cap in zip(batch_names, batch_captions)})
 
     return city_captions
-
 def process_city_wmeta(city_name, data_path, city_filtered_files, meta, batch_size=4):
     city_captions = {}
 
@@ -202,6 +201,7 @@ def main():
     data_path = args.root_folder
     batch_size = args.batch_size
     city_name = args.sub_folder if args.sub_folder else None 
+    split = args.split
     
     if args.metafile:
         meta = []
@@ -226,16 +226,16 @@ def main():
             all_captions = {}
             for city_name, city_filtered_files in filtered_files.items():
                 if meta_lookup:
-                    all_captions.append(process_city_wmeta(city_name, data_path, city_filtered_files, meta_lookup, batch_size) 
+                    all_captions.append(process_city_wmeta(city_name, data_path, city_filtered_files, meta_lookup, batch_size)) 
                 else:
                     all_captions.append(process_city(city_name, data_path, city_filtered_files, batch_size)) 
             save_captions_asjson(args.caption_root_folder, None, all_captions, split)
     else:
-        for city in os.listdir(input_dir):
+        for city in os.listdir(args.root_folder):
             if city_name is not None and city_name != city:
                 continue
             else:
-                if not any(f.startswith(f"{city}_") for f in os.listdir(out_dir)): 
+                if not any(f.startswith(f"{city}_") for f in os.listdir(args.caption_root_folder)): 
                     city_list = os.listdir(os.path.join(data_path, city))
                     if meta_lookup:
                         captions = process_city_wmeta(city, data_path, city_list, meta_lookup, batch_size) 
