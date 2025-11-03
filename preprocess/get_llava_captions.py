@@ -166,6 +166,25 @@ def process_city(city_name, data_path, city_filtered_files, batch_size=4):
 
     return city_captions
 
+def process_city_wmeta(city_name, data_path, city_filtered_files, meta, batch_size=4):
+    city_captions = {}
+
+    for i in tqdm(range(0, len(city_filtered_files), batch_size), desc=f"Processing {city_name}"):
+        batch_names = city_filtered_files[i:i + batch_size]
+        batch_paths = [os.path.join(data_path, city_name, fname) for fname in batch_names]
+
+        batch_captions = batch2caption_wmeta(
+            batch_paths,
+            meta,
+            llava_model=llava_model,
+            processor=processor,
+            convo_temp=convo,
+        )
+
+        city_captions.update({fname: cap.lower() for fname, cap in zip(batch_names, batch_captions)})
+
+    return city_captions
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--root_folder", type=str, required=True)
